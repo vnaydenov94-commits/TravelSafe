@@ -1,0 +1,230 @@
+
+
+
+'use client'
+
+import { useEffect, useRef } from 'react'
+import { getVehicleTypeById } from '@/lib/vehicle-types'
+
+interface MapUser {
+  id: string
+  name: string
+  vehicleType: string
+  location: {
+    latitude: number
+    longitude: number
+    city?: string
+    country?: string
+  }
+  emergencyMode?: boolean
+  isVerified?: boolean
+}
+
+interface MinimalMapProps {
+  users?: MapUser[]
+  center?: [number, number]
+  zoom?: number
+  vehicleTypeFilter?: string[]
+}
+
+export function MinimalMapFixed({ 
+  users = [], 
+  center = [42.7339, 25.4858], // Default to Bulgaria center
+  zoom = 6,
+  vehicleTypeFilter = []
+}: MinimalMapProps) {
+  const mapRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const markersRef = useRef<any[]>([])
+  
+  // Create custom marker based on vehicle type
+  const createVehicleMarker = async (user: MapUser, L: any) => {
+    const vehicleType = getVehicleTypeById(user.vehicleType)
+    const color = vehicleType ? vehicleType.color : '#3B82F6'
+    
+    // Create custom icon with vehicle type color
+    const customIcon = L.divIcon({
+      html: `
+        <div style="
+          background-color: ${color};
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 3px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          color: white;
+          font-size: 10px;
+        ">
+          ${vehicleType?.name?.charAt(0) || 'T'}
+        </div>
+      `,
+      className: 'custom-vehicle-marker',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    })
+    
+    const marker = L.marker([user.location.latitude, user.location.longitude], {
+      icon: customIcon
+    })
+    
+    // Create popup content
+    const popupContent = `
+      <div style="min-width: 200px;">
+        <h3 style="margin: 0 0 8px 0; font-weight: bold; color: #1f2937;">
+          ${user.name}
+          ${user.isVerified ? '<span style="color: #10b981; margin-left: 4px;">✓</span>' : ''}
+        </h3>
+        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+          <span style="color: ${color}; font-weight: bold; margin-right: 8px;">●</span>
+          <span style="color: #6b7280; font-size: 14px;">
+            ${vehicleType ? vehicleType.name : 'Unknown vehicle'}
+          </span>
+        </div>
+        <div style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+          📍 ${user.location.city ? `${user.location.city}, ` : ''}${user.location.country || 'Unknown location'}
+        </div>
+        ${user.emergencyMode ? 
+          '<div style="color: #ef4444; font-size: 14px; font-weight: bold;">🚨 Emergency Mode Active</div>' : 
+          ''
+        }
+      </div>
+    `
+    
+    marker.bindPopup(popupContent)
+    return marker
+  }
+  
+  useEffect(() => {
+    let mounted = true
+    let mapInstance: any = null
+    let markersInstance: any[] = []
+    
+    const initMap = async () => {
+      try {
+        // Check if component is still mounted
+        if (!mounted) return
+        
+        const container = containerRef.current
+        if (!container) {
+          console.error('Container not found')
+          return
+        }
+        
+        // Clear any existing content
+        container.innerHTML = ''
+        
+        // Dynamic import with better error handling
+        const L = await import('leaflet')
+        
+        // Check if component is still mounted after async import
+        if (!mounted) return
+        
+        // Fix for Leaflet default markers in Next.js
+        delete (L.Icon.Default.prototype as any)._getIconUrl
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        })
+        
+        // Create map
+        mapInstance = L.map(container, {
+          center: center,
+          zoom: zoom,
+          preferCanvas: false,
+          zoomControl: true
+        })
+        
+        // Store map reference
+        mapRef.current = mapInstance
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://i.ytimg.com/vi/zobFzGUO4kc/maxresdefault.jpg', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+          subdomains: ['a', 'b', 'c']
+        }).addTo(mapInstance)
+        
+        // Add user markers
+        const newMarkers: any[] = []
+        for (const user of users) {
+          // Check if component is still mounted
+          if (!mounted) break
+          
+          // Apply vehicle type filter
+          if (vehicleTypeFilter.length > 0 && !vehicleTypeFilter.includes(user.vehicleType)) {
+            continue
+          }
+          
+          const marker = await createVehicleMarker(user, L)
+          marker.addTo(mapInstance)
+          newMarkers.push(marker)
+        }
+        
+        markersInstance = newMarkers
+        markersRef.current = newMarkers
+        
+        // Adjust map view to fit all markers if users exist
+        if (newMarkers.length > 0 && mounted) {
+          const group = new (L as any).featureGroup(newMarkers)
+          mapInstance.fitBounds(group.getBounds().pad(0.1))
+        }
+        
+        // Force resize after a short delay
+        setTimeout(() => {
+          if (mounted && mapInstance) {
+            mapInstance.invalidateSize()
+          }
+        }, 100)
+          
+      } catch (error) {
+        console.error('Error initializing minimal map:', error)
+      }
+    }
+    
+    // Start initialization with a small delay
+    const timer = setTimeout(initMap, 150)
+    
+    // Cleanup function
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+      
+      // Clean up markers
+      markersInstance.forEach(marker => {
+        try {
+          marker?.remove?.()
+        } catch (e) {
+          // Marker might already be removed
+        }
+      })
+      markersRef.current = []
+      
+      // Clean up map
+      if (mapInstance) {
+        try {
+          mapInstance.remove()
+        } catch (e) {
+          // Map might already be removed
+        }
+      }
+      mapRef.current = null
+    }
+  }, [users, center, zoom, vehicleTypeFilter])
+  
+  return (
+    <div 
+      ref={containerRef}
+      style={{ 
+        height: '100%', 
+        width: '100%',
+        minHeight: '400px',
+        backgroundColor: '#f0f0f0'
+      }}
+    />
+  )
+}

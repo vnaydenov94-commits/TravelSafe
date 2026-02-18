@@ -1,0 +1,419 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/travelsafe/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  accounts      Account[]
+  sessions      Session[]
+  profile       TravelerProfile?
+  sentConnections Connection[] @relation("ConnectionRequester")
+  receivedConnections Connection[] @relation("ConnectionReceiver")
+  sentMessages  Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageReceiver")
+  locations     Location[]
+  emergencyContacts EmergencyContact[]
+  checkIns      CheckIn[]
+  sentAlerts    EmergencyAlert[] @relation("AlertSender")
+  receivedAlerts EmergencyAlert[] @relation("AlertReceiver")
+  serviceProvider ServiceProvider?
+  roadsideHelpRequests RoadsideHelpRequest[]
+  providerReviews ServiceProviderReview[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// TravelSafe specific models
+model TravelerProfile {
+  id              String @id @default(cuid())
+  userId          String @unique
+  firstName       String
+  lastName        String
+  bio             String?
+  nationality     String?
+  languages       String[] // JSON array of languages spoken
+  birthDate       DateTime?
+  phoneNumber     String?
+  homeCountry     String?
+  currentCountry  String?
+  currentCity     String?
+  profileImage    String?
+  isVerified      Boolean @default(false)
+  travelStyle     String? // backpacker, luxury, business, etc.
+  interests       String[] // hiking, food, culture, etc.
+  vehicleType     String @default("car") // car, truck, motorcycle, caravan, camper, bus, bicycle, walking
+  locationSharing LocationSharingLevel @default(CONNECTIONS_ONLY)
+  emergencyMode   Boolean @default(false)
+  showOnMap       Boolean @default(true) // Control visibility on the map for connections
+  lastSeen        DateTime @default(now())
+  isActive        Boolean @default(true)
+  pushSubscription Json? // Web Push subscription data
+  notificationsEnabled Boolean @default(true) // User preference for notifications
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum LocationSharingLevel {
+  OFF
+  EMERGENCY_ONLY
+  CONNECTIONS_ONLY
+  ALWAYS
+}
+
+model Connection {
+  id          String @id @default(cuid())
+  requesterId String
+  receiverId  String
+  status      ConnectionStatus @default(PENDING)
+  message     String? // Optional message with connection request
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiver  User @relation("ConnectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, receiverId])
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+model Message {
+  id         String @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  type       MessageType @default(TEXT)
+  isRead     Boolean @default(false)
+  location   Json? // Optional location data for location sharing
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+enum MessageType {
+  TEXT
+  LOCATION
+  EMERGENCY
+  SYSTEM
+}
+
+model Location {
+  id        String @id @default(cuid())
+  userId    String
+  latitude  Float
+  longitude Float
+  accuracy  Float?
+  address   String?
+  city      String?
+  country   String?
+  isEmergency Boolean @default(false)
+  isCurrent Boolean @default(true) // Only one location per user should be current
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyContact {
+  id           String @id @default(cuid())
+  userId       String
+  name         String
+  phoneNumber  String
+  relationship String
+  email        String?
+  isPrimary    Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CheckIn {
+  id        String @id @default(cuid())
+  userId    String
+  status    CheckInStatus @default(SAFE)
+  message   String?
+  latitude  Float?
+  longitude Float?
+  location  String? // Human readable location
+  isOverdue Boolean @default(false)
+  dueAt     DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum CheckInStatus {
+  SAFE
+  NEED_HELP
+  EMERGENCY
+  MISSED
+}
+
+model EmergencyAlert {
+  id          String @id @default(cuid())
+  senderId    String
+  receiverId  String
+  type        EmergencyType
+  message     String?
+  latitude    Float
+  longitude   Float
+  address     String?
+  isResolved  Boolean @default(false)
+  isActive    Boolean @default(true)
+  radius      Float @default(5000) // Alert radius in meters
+  priority    AlertPriority @default(HIGH)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sender   User @relation("AlertSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("AlertReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+enum EmergencyType {
+  MEDICAL
+  SAFETY
+  LOST
+  POLICE
+  FIRE
+  GENERAL
+}
+
+enum AlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model LocalEmergencyResource {
+  id          String @id @default(cuid())
+  country     String
+  city        String?
+  region      String?
+  serviceType String // police, medical, fire, tourist_hotline, etc.
+  name        String
+  phoneNumber String
+  description String?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([country, city, serviceType, phoneNumber])
+}
+
+// Premium Service Provider Models
+model ServiceProvider {
+  id              String @id @default(cuid())
+  userId          String @unique
+  businessName    String
+  description     String?
+  phoneNumber     String
+  email           String
+  website         String?
+  logoImage       String?
+  coverImage      String?
+  
+  // Location & Coverage
+  latitude        Float
+  longitude       Float
+  address         String?
+  city            String?
+  country         String?
+  coverageRadius  Float @default(25) // Service radius in km
+  
+  // Business Details
+  serviceTypes    ServiceType[]
+  isVerified      Boolean @default(false)
+  isActive        Boolean @default(true)
+  showOnMap       Boolean @default(true)
+  
+  // Subscription
+  subscriptionTier    SubscriptionTier @default(BASIC)
+  subscriptionStatus  SubscriptionStatus @default(TRIAL)
+  subscriptionEndsAt  DateTime?
+  stripeCustomerId    String?
+  stripeSubscriptionId String?
+  
+  // Ratings
+  averageRating   Float @default(0)
+  totalRatings    Int @default(0)
+  totalJobsCompleted Int @default(0)
+  
+  // Operating Hours (JSON: { monday: { open: "08:00", close: "18:00" }, ... })
+  operatingHours  Json?
+  is24Hours       Boolean @default(false)
+  
+  // Push notifications
+  pushSubscription Json?
+  notificationsEnabled Boolean @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  helpRequests RoadsideHelpRequest[] @relation("ProviderHelpRequests")
+  reviews ServiceProviderReview[]
+}
+
+enum ServiceType {
+  TIRE_CHANGE
+  TOWING
+  FUEL_DELIVERY
+  BATTERY_JUMPSTART
+  LOCKOUT_SERVICE
+  MECHANICAL_REPAIR
+  FLAT_BED_TOWING
+  MOTORCYCLE_TOWING
+  WINCHING
+  EMERGENCY_ROADSIDE
+}
+
+enum SubscriptionTier {
+  BASIC       // Basic listing, limited visibility
+  PREMIUM     // Featured listing, priority notifications
+  ENTERPRISE  // All features + analytics
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+model RoadsideHelpRequest {
+  id              String @id @default(cuid())
+  userId          String
+  providerId      String?
+  
+  // Request Details
+  serviceType     ServiceType
+  description     String?
+  
+  // Location
+  latitude        Float
+  longitude       Float
+  address         String?
+  city            String?
+  country         String?
+  
+  // Vehicle Info
+  vehicleType     String?
+  vehicleMake     String?
+  vehicleModel    String?
+  vehicleColor    String?
+  licensePlate    String?
+  
+  // Status
+  status          HelpRequestStatus @default(PENDING)
+  priority        AlertPriority @default(MEDIUM)
+  
+  // Pricing
+  estimatedPrice  Float?
+  finalPrice      Float?
+  currency        String @default("BGN")
+  
+  // Timeline
+  requestedAt     DateTime @default(now())
+  acceptedAt      DateTime?
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  
+  // Provider response tracking
+  notifiedProviders String[] // Array of provider IDs who were notified
+  declinedProviders String[] // Array of provider IDs who declined
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider ServiceProvider? @relation("ProviderHelpRequests", fields: [providerId], references: [id])
+}
+
+enum HelpRequestStatus {
+  PENDING       // Waiting for provider
+  ACCEPTED      // Provider accepted
+  EN_ROUTE      // Provider on the way
+  ARRIVED       // Provider arrived
+  IN_PROGRESS   // Work in progress
+  COMPLETED     // Job done
+  CANCELLED     // Cancelled by user or provider
+  EXPIRED       // No provider accepted in time
+}
+
+model ServiceProviderReview {
+  id          String @id @default(cuid())
+  providerId  String
+  userId      String
+  rating      Int // 1-5 stars
+  comment     String?
+  isVerified  Boolean @default(false) // Verified purchase/service
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([providerId, userId]) // One review per user per provider
+}
