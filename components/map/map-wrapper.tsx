@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MapPin, Loader2, AlertTriangle, Users, Eye, EyeOff } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { EmergencyAlertModal } from './emergency-alert-modal'
 import { RoadsideHelpModal } from './roadside-help-modal'
 import { VehicleTypeFilter } from './vehicle-type-filter'
@@ -72,6 +73,8 @@ interface MapWrapperProps {
   showControls?: boolean
   showEmergencyButton?: boolean
   showFilters?: boolean
+  /** Guest mode: view-only map, no location saving or alert creation */
+  readOnly?: boolean
 }
 
 export function MapWrapper({ 
@@ -79,7 +82,8 @@ export function MapWrapper({
   height = '100vh', 
   showControls = true,
   showEmergencyButton = true,
-  showFilters = true
+  showFilters = true,
+  readOnly = false
 }: MapWrapperProps) {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false)
   const [showRoadsideModal, setShowRoadsideModal] = useState(false)
@@ -203,8 +207,8 @@ export function MapWrapper({
     
     connectSSE()
     
-    // Auto-capture and save location on map load
-    if (navigator.geolocation) {
+    // Auto-capture and save location on map load (signed-in users only)
+    if (!readOnly && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude, accuracy } = position.coords
@@ -334,6 +338,9 @@ export function MapWrapper({
                           const { latitude, longitude, accuracy } = position.coords
                           setUserLocation([latitude, longitude])
                           handleLocationUpdate(latitude, longitude)
+
+                          // Guests can center the map on themselves, but nothing is saved
+                          if (readOnly) return
                           
                           // Get city and country from coordinates using reverse geocoding
                           let city = null
@@ -401,8 +408,26 @@ export function MapWrapper({
         </div>
       )}
 
+      {/* Read-only notice + sign-in CTA for guests */}
+      {readOnly && (
+        <div className="absolute bottom-6 right-6 z-[1000] max-w-xs">
+          <Card className="shadow-lg border-blue-200">
+            <CardContent className="p-3 space-y-2">
+              <p className="text-xs text-gray-600">
+                Режим само за преглед. Влез, за да споделяш локация и да подаваш сигнали.
+              </p>
+              <Link href="/auth/signin" className="block">
+                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  Sign in to report
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Emergency Button - Fixed position with dropdown */}
-      {showEmergencyButton && (
+      {showEmergencyButton && !readOnly && (
         <div className="absolute bottom-6 right-6 z-[1000]">
           <div className="relative">
             <Card className="shadow-lg border-red-200">
@@ -453,6 +478,9 @@ export function MapWrapper({
         </div>
       )}
       
+      {/* Write-action modals are only mounted for signed-in users */}
+      {!readOnly && (
+      <>
       {/* Emergency Alert Modal */}
       <EmergencyAlertModal
         open={showEmergencyModal}
@@ -468,6 +496,8 @@ export function MapWrapper({
         userLocation={userLocation}
         onAlertSent={handleAlertSent}
       />
+      </>
+      )}
     </div>
   )
 }

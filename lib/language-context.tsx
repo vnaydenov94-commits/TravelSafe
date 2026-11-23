@@ -7,7 +7,7 @@ type Language = 'bg' | 'en'
 interface LanguageContextType {
   language: Language
   setLanguage: (lang: Language) => void
-  t: (key: string) => string
+  t: (key: string, params?: Record<string, string | number>) => string
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
@@ -29,9 +29,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('language', lang)
   }
 
-  const t = (key: string) => {
+  // Optional {placeholder} interpolation, e.g. t('cta.users', { users: '10' })
+  const t = (key: string, params?: Record<string, string | number>) => {
     const translations = require('./translations').translations
-    return translations[language][key] || key
+    const text: string = translations[language][key] || key
+    if (!params) return text
+    return text.replace(/\{(\w+)\}/g, (match, name) =>
+      params[name] !== undefined ? String(params[name]) : match
+    )
   }
 
   if (!mounted) {

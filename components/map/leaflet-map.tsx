@@ -796,6 +796,11 @@ function LeafletMap({
                     waveButton.disabled = false
                   }, 2000)
                 } else {
+                  // Guests (read-only map) are sent to sign-in for social actions
+                  if (response.status === 401) {
+                    window.location.href = '/auth/signin'
+                    return
+                  }
                   const error = await response.json()
                   alert(`Грешка: ${error.error || 'Неуспешно изпращане'}`)
                   waveButton.disabled = false
@@ -851,6 +856,11 @@ function LeafletMap({
                 if (response.ok) {
                   window.location.href = `/chat?userId=${user.id}`
                 } else {
+                  // Guests (read-only map) are sent to sign-in for social actions
+                  if (response.status === 401) {
+                    window.location.href = '/auth/signin'
+                    return
+                  }
                   const error = await response.json()
                   alert(`Грешка: ${error.error || 'Неуспешно свързване'}`)
                   messageButton.disabled = false
@@ -926,6 +936,11 @@ function LeafletMap({
                       waveButton.disabled = false
                     }, 2000)
                   } else {
+                    // Guests (read-only map) are sent to sign-in for social actions
+                    if (response.status === 401) {
+                      window.location.href = '/auth/signin'
+                      return
+                    }
                     const error = await response.json()
                     alert(`Грешка: ${error.error || 'Неуспешно изпращане'}`)
                     waveButton.disabled = false
@@ -981,6 +996,11 @@ function LeafletMap({
                   if (response.ok) {
                     window.location.href = `/chat?userId=${user.id}`
                   } else {
+                    // Guests (read-only map) are sent to sign-in for social actions
+                    if (response.status === 401) {
+                      window.location.href = '/auth/signin'
+                      return
+                    }
                     const error = await response.json()
                     alert(`Грешка: ${error.error || 'Неуспешно свързване'}`)
                     messageButton.disabled = false

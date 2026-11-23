@@ -59,14 +59,15 @@ export const translations = {
     'testimonials.3.location': 'Варна, България',
 
     // CTA
-    'cta.badge': 'Присъедини се към 15,000+ пътешественици',
+    'cta.badge': 'Присъедини се към {users}+ пътешественици',
+    'cta.badgeGeneric': 'Присъедини се към общността на пътешествениците',
     'cta.title1': 'Готов да Пътуваш с',
     'cta.title2': 'Увереност?',
     'cta.description': 'Създай профил безплатно и започни да се свързваш с пътешественици от цял свят още днес!',
     'cta.startFree': 'Започни Безплатно',
     'cta.viewLiveMap': 'Виж Live Map',
     'cta.free': '100% Безплатно',
-    'cta.users': '15,000+ Потребители',
+    'cta.users': '{users}+ Потребители',
     'cta.rating': '4.9/5 Рейтинг',
 
     // Footer
@@ -135,14 +136,15 @@ export const translations = {
     'testimonials.3.location': 'Varna, Bulgaria',
 
     // CTA
-    'cta.badge': 'Join 15,000+ travelers',
+    'cta.badge': 'Join {users}+ travelers',
+    'cta.badgeGeneric': 'Join the traveler community',
     'cta.title1': 'Ready to Travel with',
     'cta.title2': 'Confidence?',
     'cta.description': 'Create a free profile and start connecting with travelers from around the world today!',
     'cta.startFree': 'Start Free',
     'cta.viewLiveMap': 'View Live Map',
     'cta.free': '100% Free',
-    'cta.users': '15,000+ Users',
+    'cta.users': '{users}+ Users',
     'cta.rating': '4.9/5 Rating',
 
     // Footer

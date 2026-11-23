@@ -1,15 +1,13 @@
 
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getUserSession } from '@/lib/auth'
 import { MapWrapper } from '@/components/map/map-wrapper'
 
 export default async function MapPage() {
+  // The map is public: guests get a read-only view, while write actions
+  // (sharing location, emergency/roadside alerts) still require sign-in.
   const user = await getUserSession()
-  
-  if (!user) {
-    redirect('/auth/signin')
-  }
+  const isGuest = !user
 
   return (
     <div className="h-screen bg-gray-50">
@@ -28,6 +26,20 @@ export default async function MapPage() {
                 <p className="text-xs text-gray-600">Real-time traveler locations</p>
               </div>
             </div>
+            {isGuest ? (
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/auth/signin">
+                <button className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+                  Sign In
+                </button>
+              </Link>
+              <Link href="/auth/signup">
+                <button className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
+                  Sign Up
+                </button>
+              </Link>
+            </div>
+            ) : (
             <div className="flex items-center space-x-4">
               <Link href="/chat">
                 <button className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
@@ -55,6 +67,7 @@ export default async function MapPage() {
                 </span>
               </div>
             </div>
+            )}
           </div>
         </div>
       </header>
@@ -65,6 +78,7 @@ export default async function MapPage() {
           height="100%" 
           showControls={true}
           showEmergencyButton={true}
+          readOnly={isGuest}
         />
       </div>
     </div>

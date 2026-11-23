@@ -10,8 +10,18 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type') // 'own' or 'visible'
+    const includeEmergency = searchParams.get('includeEmergency') === 'true'
+
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      // Guests have read-only access to the public map: only users who explicitly
+      // share their location publicly (locationSharing = ALWAYS) are returned,
+      // and no private fields (e.g. email) are exposed.
+      if (type === 'own') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      return NextResponse.json({ locations: await getPublicLocations() })
     }
 
     // Update lastSeen for current user on every location fetch
@@ -19,10 +29,6 @@ export async function GET(request: NextRequest) {
       where: { userId: session.user.id },
       data: { lastSeen: new Date() }
     }).catch(() => {}) // Silently fail if profile doesn't exist
-
-    const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') // 'own' or 'visible'
-    const includeEmergency = searchParams.get('includeEmergency') === 'true'
 
     if (type === 'own') {
       // Get current user's location
@@ -180,6 +186,45 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Public (guest-visible) locations: users who opted into ALWAYS sharing and showOnMap
+async function getPublicLocations() {
+  const publicUsers = await db.user.findMany({
+    where: {
+      profile: {
+        showOnMap: true,
+        locationSharing: 'ALWAYS'
+      },
+      locations: { some: { isCurrent: true } }
+    },
+    include: {
+      profile: true,
+      locations: {
+        where: { isCurrent: true },
+        take: 1,
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  })
+
+  return publicUsers
+    .filter((user: any) => user?.profile && user.locations?.[0])
+    .map((user: any) => ({
+      id: user.id,
+      name: `${user.profile.firstName} ${user.profile.lastName}`,
+      isVerified: user.profile.isVerified,
+      lastSeen: user.profile.lastSeen,
+      emergencyMode: user.profile.emergencyMode,
+      vehicleType: user.profile.vehicleType || 'car',
+      location: {
+        latitude: user.locations[0].latitude,
+        longitude: user.locations[0].longitude,
+        city: user.locations[0].city,
+        country: user.locations[0].country
+      },
+      isCurrentUser: false
+    }))
 }
 
 // POST /api/locations - Update current user's location

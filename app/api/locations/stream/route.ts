@@ -7,10 +7,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.email) {
-    return new Response('Unauthorized', { status: 401 })
-  }
+  // Guests get a read-only stream limited to publicly shared locations
+  const isGuest = !session?.user?.email
 
   const encoder = new TextEncoder()
   
@@ -18,13 +16,15 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       const sendUpdate = async () => {
         try {
-          // Get current user
-          const currentUser = await prisma.user.findUnique({
-            where: { email: session.user!.email! },
-            include: { profile: true }
-          })
+          // Get current user (authenticated sessions only)
+          const currentUser = isGuest
+            ? null
+            : await prisma.user.findUnique({
+                where: { email: session!.user!.email! },
+                include: { profile: true }
+              })
 
-          if (!currentUser) {
+          if (!isGuest && !currentUser) {
             controller.close()
             return
           }
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
             where: {
               profile: {
                 showOnMap: true,
-                locationSharing: { not: 'OFF' }
+                locationSharing: isGuest ? 'ALWAYS' : { not: 'OFF' }
               },
               locations: { some: { isCurrent: true } }
             },
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
                 },
                 emergencyMode: user.profile?.emergencyMode || false,
                 isVerified: user.profile?.isVerified || false,
-                isCurrentUser: user.id === currentUser.id,
+                isCurrentUser: currentUser ? user.id === currentUser.id : false,
                 lastSeen: user.profile?.lastSeen,
                 activeAlert: activeAlert ? {
                   type: activeAlert.type,
