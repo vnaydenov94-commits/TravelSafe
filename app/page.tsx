@@ -12,33 +12,51 @@ export default function HomePage() {
   const [stats, setStats] = useState({ users: 0, countries: 0, alerts: 0 })
   const [activeFeature, setActiveFeature] = useState(0)
 
-  // Анимирани статистики
+  // Real platform totals from /api/stats - the single source of truth for every
+  // user count on this page (hero stats + CTA badge + trust badge)
+  const [totals, setTotals] = useState({ users: 0, countries: 0, alerts: 0 })
+
+  // Анимирани статистики (count-up to the real values)
   useEffect(() => {
-    const targetStats = { users: 15000, countries: 120, alerts: 5000 }
-    const duration = 2000
-    const steps = 60
-    const increment = {
-      users: targetStats.users / steps,
-      countries: targetStats.countries / steps,
-      alerts: targetStats.alerts / steps
+    let timer: ReturnType<typeof setInterval> | undefined
+    const animate = (target: { users: number; countries: number; alerts: number }) => {
+      const steps = 50
+      let currentStep = 0
+      timer = setInterval(() => {
+        currentStep++
+        if (currentStep >= steps) {
+          setStats(target)
+          if (timer) clearInterval(timer)
+          return
+        }
+        const progress = currentStep / steps
+        setStats({
+          users: Math.floor(target.users * progress),
+          countries: Math.floor(target.countries * progress),
+          alerts: Math.floor(target.alerts * progress)
+        })
+      }, 30)
     }
 
-    let currentStep = 0
-    const timer = setInterval(() => {
-      if (currentStep < steps) {
-        setStats({
-          users: Math.floor(increment.users * currentStep),
-          countries: Math.floor(increment.countries * currentStep),
-          alerts: Math.floor(increment.alerts * currentStep)
-        })
-        currentStep++
-      } else {
-        setStats(targetStats)
-        clearInterval(timer)
-      }
-    }, duration / steps)
+    fetch('/api/stats')
+      .then((res) => {
+        if (!res.ok) throw new Error(`Stats request failed: ${res.status}`)
+        return res.json()
+      })
+      .then((data) => {
+        const target = {
+          users: data.users ?? 0,
+          countries: data.countries ?? 0,
+          alerts: data.messages ?? 0
+        }
+        setTotals(target)
+        animate(target)
+      })
+      .catch(() => setStats({ users: 0, countries: 0, alerts: 0 }))
 
-    return () => clearInterval(timer)
+    return () => {
+      if (timer) clearInterval(timer)
+    }
   }, [])
 
   // Ротация на features
@@ -421,7 +439,9 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/20 backdrop-blur-sm mb-6">
             <TrendingUp className="h-5 w-5 text-white" />
-            <span className="text-white font-semibold">{t('cta.badge')}</span>
+            <span className="text-white font-semibold">{totals.users > 0
+                ? t('cta.badge', { users: totals.users.toLocaleString() })
+                : t('cta.badgeGeneric')}</span>
           </div>
 
           <h2 className="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
@@ -454,10 +474,12 @@ export default function HomePage() {
               <Shield className="h-5 w-5" />
               <span className="text-sm">{t('cta.free')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5" />
-              <span className="text-sm">{t('cta.users')}</span>
-            </div>
+            {totals.users > 0 && (
+              <div className="flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                <span className="text-sm">{t('cta.users', { users: totals.users.toLocaleString() })}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 fill-current" />
               <span className="text-sm">{t('cta.rating')}</span>
