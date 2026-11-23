@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { MapPin, Shield, Users, MessageCircle, Bell, Globe, Navigation, ArrowRight, Zap, Heart, Star, TrendingUp, Check } from 'lucide-react'
+import { MapPin, Shield, Users, MessageCircle, Bell, Globe, Navigation, ArrowRight, Zap, Heart, Star, TrendingUp, Check, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useLanguage } from '@/lib/language-context'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -11,6 +11,7 @@ export default function HomePage() {
   const { t } = useLanguage()
   const [stats, setStats] = useState({ users: 0, countries: 0, alerts: 0 })
   const [activeFeature, setActiveFeature] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Real platform totals from /api/stats - the single source of truth for every
   // user count on this page (hero stats + CTA badge + trust badge)
@@ -73,18 +74,19 @@ export default function HomePage() {
       <header className="bg-white/95 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center group cursor-pointer">
+            <Link href="/" aria-label="TravelSafe – home" className="flex items-center group shrink-0">
               <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
                 <MapPin className="h-6 w-6 text-white" />
               </div>
               <span className="ml-3 text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 TravelSafe
               </span>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            </Link>
+            {/* Desktop / tablet navigation */}
+            <div className="hidden sm:flex items-center space-x-4">
               <LanguageSwitcher />
               <Link href="/map">
-                <Button variant="ghost" className="hidden sm:flex items-center gap-2 hover:bg-blue-50">
+                <Button variant="ghost" className="flex items-center gap-2 hover:bg-blue-50">
                   <Navigation className="h-4 w-4" />
                   {t('header.liveMap')}
                 </Button>
@@ -98,8 +100,40 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
+            {/* Mobile: language switcher + hamburger */}
+            <div className="flex sm:hidden items-center gap-1">
+              <LanguageSwitcher />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </Button>
+            </div>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <nav id="mobile-menu" className="sm:hidden border-t bg-white px-4 py-3 space-y-2 shadow-md">
+            <Link href="/map" onClick={() => setMobileMenuOpen(false)} className="block">
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <Navigation className="h-4 w-4" />
+                {t('header.liveMap')}
+              </Button>
+            </Link>
+            <Link href="/auth/signin" onClick={() => setMobileMenuOpen(false)} className="block">
+              <Button variant="ghost" className="w-full justify-start">{t('header.signIn')}</Button>
+            </Link>
+            <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block">
+              <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                {t('header.getStarted')}
+              </Button>
+            </Link>
+          </nav>
+        )}
       </header>
 
       {/* Hero Section - С планинска снимка като фон */}
@@ -492,7 +526,7 @@ export default function HomePage() {
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-6 md:mb-0">
+            <Link href="/" aria-label="TravelSafe – home" className="flex items-center mb-6 md:mb-0">
               <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-xl shadow-lg">
                 <MapPin className="h-6 w-6 text-white" />
               </div>
@@ -500,7 +534,7 @@ export default function HomePage() {
                 <div className="text-xl font-bold">TravelSafe</div>
                 <div className="text-sm text-gray-400">{t('footer.tagline')}</div>
               </div>
-            </div>
+            </Link>
             <div className="text-center md:text-right">
               <div className="text-sm text-gray-400 mb-2">
                 {t('footer.copyright')}
