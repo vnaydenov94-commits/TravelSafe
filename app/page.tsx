@@ -17,6 +17,11 @@ export default function HomePage() {
   // user count on this page (hero stats + CTA badge + trust badge)
   const [totals, setTotals] = useState({ users: 0, countries: 0, alerts: 0 })
 
+  // Never render "0+": show a neutral placeholder while loading or when the real
+  // total is 0; during the count-up animation start from 1 instead of 0.
+  const formatStat = (key: 'users' | 'countries' | 'alerts') =>
+    totals[key] > 0 ? `${Math.max(stats[key], 1).toLocaleString()}+` : '—'
+
   // Анимирани статистики (count-up to the real values)
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined
@@ -167,7 +172,12 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-white mb-10 max-w-4xl mx-auto leading-relaxed drop-shadow-lg">
-              {t('hero.description')} <span className="font-bold text-yellow-300">{stats.countries}+ {t('hero.countries')}</span>
+              {t('hero.description')}{' '}
+              {totals.countries > 0 ? (
+                <span className="font-bold text-yellow-300">{formatStat('countries')} {t('hero.countries')}</span>
+              ) : (
+                <span className="font-bold text-yellow-300">{t('hero.countriesFallback')}</span>
+              )}
               {t('hero.description2')}
               <span className="font-bold"> {t('hero.description3')}</span>
             </p>
@@ -191,19 +201,19 @@ export default function HomePage() {
             <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto">
               <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/50 hover:shadow-3xl transition-all hover:scale-105">
                 <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-                  {stats.users.toLocaleString()}+
+                  {formatStat('users')}
                 </div>
                 <div className="text-sm text-gray-700 font-medium">{t('hero.activeUsers')}</div>
               </div>
               <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/50 hover:shadow-3xl transition-all hover:scale-105">
                 <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                  {stats.countries}+
+                  {formatStat('countries')}
                 </div>
                 <div className="text-sm text-gray-700 font-medium">{t('hero.countries2')}</div>
               </div>
               <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/50 hover:shadow-3xl transition-all hover:scale-105">
                 <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
-                  {stats.alerts.toLocaleString()}+
+                  {formatStat('alerts')}
                 </div>
                 <div className="text-sm text-gray-700 font-medium">{t('hero.messagesSent')}</div>
               </div>
