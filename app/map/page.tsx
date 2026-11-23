@@ -15,7 +15,7 @@ export default async function MapPage() {
       <header className="bg-white/95 backdrop-blur-sm shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14">
-            <div className="flex items-center space-x-4">
+            <Link href="/" aria-label="TravelSafe – home" className="flex items-center space-x-4">
               <div className="bg-blue-600 p-1.5 rounded-lg">
                 <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
@@ -25,7 +25,7 @@ export default async function MapPage() {
                 <h1 className="text-lg font-bold text-gray-900">TravelSafe Map</h1>
                 <p className="text-xs text-gray-600">Real-time traveler locations</p>
               </div>
-            </div>
+            </Link>
             {isGuest ? (
             <div className="flex items-center space-x-2 sm:space-x-4">
               <Link href="/auth/signin">

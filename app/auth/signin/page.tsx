@@ -74,11 +74,11 @@ export default function SignInPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="bg-blue-600 p-3 rounded-full">
+          <Link href="/" aria-label="TravelSafe – home" className="flex items-center justify-center mb-4">
+            <div className="bg-blue-600 p-3 rounded-full hover:scale-110 transition-transform">
               <MapPin className="h-8 w-8 text-white" />
             </div>
-          </div>
+          </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">TravelSafe</h1>
           <p className="text-gray-600">Connect with travelers worldwide</p>
         </div>
@@ -127,7 +127,12 @@ export default function SignInPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"

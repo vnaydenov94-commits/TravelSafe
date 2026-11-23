@@ -118,7 +118,9 @@ export async function GET(request: NextRequest) {
         const sharingLevel = otherUser.profile.locationSharing
         const canSeeLocation = sharingLevel === 'ALWAYS' || 
           sharingLevel === 'CONNECTIONS_ONLY' ||
-          (sharingLevel === 'EMERGENCY_ONLY' && includeEmergency)
+          // EMERGENCY_ONLY is honoured server-side: the client flag alone is not enough,
+          // the user must actually be in emergency mode.
+          (sharingLevel === 'EMERGENCY_ONLY' && includeEmergency && otherUser.profile.emergencyMode)
         
         if (!canSeeLocation) return
 
@@ -167,7 +169,7 @@ export async function GET(request: NextRequest) {
         visibleLocations.push({
           id: user.id,
           name: `${user.profile.firstName} ${user.profile.lastName}`,
-          email: user.email,
+          // No email: these users are not connections of the viewer
           isVerified: user.profile.isVerified,
           lastSeen: user.profile.lastSeen,
           emergencyMode: user.profile.emergencyMode,

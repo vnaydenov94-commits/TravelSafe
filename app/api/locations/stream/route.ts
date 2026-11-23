@@ -29,13 +29,46 @@ export async function GET(request: NextRequest) {
             return
           }
 
+          // Respect each user's locationSharing setting:
+          //  - ALWAYS           -> visible to everyone (incl. guests)
+          //  - CONNECTIONS_ONLY -> visible only to accepted connections
+          //  - EMERGENCY_ONLY   -> visible to accepted connections only while in emergency mode
+          //  - OFF              -> never visible to others
+          // The current user always sees their own marker.
+          let visibilityFilter: any = { profile: { showOnMap: true, locationSharing: 'ALWAYS' } }
+
+          if (currentUser) {
+            const connections = await prisma.connection.findMany({
+              where: {
+                status: 'ACCEPTED',
+                OR: [{ requesterId: currentUser.id }, { receiverId: currentUser.id }]
+              },
+              select: { requesterId: true, receiverId: true }
+            })
+            const connectionIds = connections.map((c) =>
+              c.requesterId === currentUser.id ? c.receiverId : c.requesterId
+            )
+
+            visibilityFilter = {
+              OR: [
+                { id: currentUser.id, profile: { showOnMap: true } },
+                { profile: { showOnMap: true, locationSharing: 'ALWAYS' } },
+                {
+                  id: { in: connectionIds },
+                  profile: { showOnMap: true, locationSharing: 'CONNECTIONS_ONLY' }
+                },
+                {
+                  id: { in: connectionIds },
+                  profile: { showOnMap: true, locationSharing: 'EMERGENCY_ONLY', emergencyMode: true }
+                }
+              ]
+            }
+          }
+
           // Fetch visible users with their active emergency alerts
           const users = await prisma.user.findMany({
             where: {
-              profile: {
-                showOnMap: true,
-                locationSharing: isGuest ? 'ALWAYS' : { not: 'OFF' }
-              },
+              ...visibilityFilter,
               locations: { some: { isCurrent: true } }
             },
             include: {

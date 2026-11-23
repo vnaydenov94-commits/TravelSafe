@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { signOut, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -308,12 +309,12 @@ export function DashboardClient({ user, connections }: DashboardClientProps) {
       <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <Link href="/" aria-label="TravelSafe – home" className="flex items-center">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <MapPin className="h-6 w-6 text-white" />
               </div>
               <span className="ml-3 text-xl font-bold text-gray-900">TravelSafe</span>
-            </div>
+            </Link>
             <div className="flex items-center space-x-4">
               <Button 
                 variant="ghost" 
